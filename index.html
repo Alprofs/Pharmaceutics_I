@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pharmaceutics Master 💊</title>
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&amp;family=Fira+Code:wght@500&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div id="app-container">
+        <div id="home-screen" class="screen active">
+            <div class="header-container">
+                <h1 class="app-title">Pharmaceutics I</h1>
+                <p class="app-subtitle">لا تنسوني من صالح دعائكم</p>
+            </div>
+            <div id="lectures-grid" class="lectures-grid">
+            </div>
+            <div class="home-footer">
+                <div class="created-by-text">This website was created by</div>
+                <a href="https://t.me/mytepro" target="_blank" class="secret-link">𝓐𝓱𝓶𝓮𝓭 𝓜𝓸𝓼𝓽𝓪𝓯𝓪</a>
+            </div>
+        </div>
+        <div id="quiz-screen" class="screen">
+            <div class="quiz-header"><span class="close-btn" onclick="goHome()">✕</span>
+                <div class="progress-bar-bg">
+                    <div id="bar" class="progress-bar-fill"></div>
+                </div>
+                <div id="counter" class="counter-text" style="font-weight: 800;">
+                    0/0
+                </div>
+            </div>
+            <div id="lecture-tag" class="lecture-tag">
+                المحاضرة الأولى
+            </div>
+            <div id="quick-review-box" class="quick-review-container">
+                <div class="typewriter-card info-en-card" dir="ltr">
+                    <div class="typewriter-header" dir="ltr">
+                        💡 Concept:
+                    </div>
+                    <div id="typewriter-text-en" class="typewriter-text en"></div>
+                </div>
+                <div class="typewriter-card info-ar-card" dir="rtl">
+                    <div class="typewriter-header" dir="rtl">
+                        💡 المفهوم بالعربية:
+                    </div>
+                    <div id="typewriter-text-ar" class="typewriter-text"></div>
+                </div>
+                <div id="countdown-box" class="countdown-box" dir="rtl">
+                    ⏳ استعد! سيظهر السؤال خلال: <span id="countdown-num" class="countdown-num">5</span> ثوانٍ
+                </div>
+            </div>
+            <div id="essay-container" style="display: none; width: 100%; max-width: 800px; margin-bottom: 15px; flex-direction: column; gap: 12px;">
+                <div class="question-box" id="essay-q"></div> <button id="toggle-ans-btn" class="btn-main" style="background: var(--progress-yellow); box-shadow: 0 6px 0 #F57F17; color: #333;" onclick="toggleEssayAnswer()">👁️ إظهار الإجابة النموذجية</button>
+                <div id="essay-ans" class="essay-ans-box" style="display: none;"></div>
+            </div>
+            <div id="question-card" class="question-box">
+                <div id="q-txt" class="question-text"></div>
+            </div>
+            <div class="options-container" id="opt-box"></div>
+            <div class="explanation-box" id="note-box">
+                <div class="explanation-title" id="note-title">📝 ملاحظة توضيحية:</div>
+                <div id="note-content" class="note-content"></div>
+            </div>
+            <div class="push-bottom"></div>
+            <div class="footer"><button id="prev-btn" class="nav-btn prev" onclick="goPrev()">السابق</button> <button id="next-btn" class="nav-btn next" onclick="goNext()">التالي</button>
+            </div>
+        </div> <button id="floating-translate-btn" class="floating-translate-btn" onclick="toggleTranslation()"> <span id="translate-btn-label">English</span> </button>
+        <div id="win-overlay" class="overlay">
+            <div class="dialog">
+                <h1 style="color: var(--primary-blue); font-size: 28px; margin: 0 0 10px 0;">عمل رائع! 🧬</h1>
+                <p style="font-size: 16px; font-weight: bold; color: #333; margin-bottom: 25px;">لقد أتممت جميع الأسئلة بنجاح.</p> <button class="btn-main" onclick="goHome()">العودة للقائمة الرئيسية</button>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
