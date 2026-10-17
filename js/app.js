@@ -300,7 +300,7 @@ function loadQuestionUI() {
             animationTimeouts.push(setTimeout(() => {
                 if (!typeWriterActive) return;
 
-                let timeLeft = 5;
+                let timeLeft = 10;
                 const countdownNum = document.getElementById('countdown-num');
                 countdownNum.textContent = timeLeft;
                 countdownBox.style.display = 'flex';
