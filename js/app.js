@@ -186,7 +186,6 @@ function startMode(lectureIndex, mode) {
             return q;
         });
     } else {
-        shuffleArray(baseQuestions);
         currentQuestions = baseQuestions.map(q => {
             q.shuffledIndices = shuffleArray(Array.from(Array(q.opts_en.length).keys()));
             q.userAnswerIndex = null;
