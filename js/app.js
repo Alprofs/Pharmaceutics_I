@@ -1,9 +1,5 @@
-import {
-    allLectures
-} from './lectures/index.js';
-import {
-    sound
-} from './sound.js';
+import { allLectures } from './lectures/index.js';
+import { sound } from './sound.js';
 
 let currentLectureIndex = 0;
 let currentMode = 'quick';
@@ -18,18 +14,67 @@ let animationTimeouts = [];
 let countdownInterval = null;
 let typeWriterActive = false;
 
+// إعداد مدة الانتظار الافتراضية
+let userWaitTime = parseInt(localStorage.getItem('quiz_wait_time')) || 5;
+
 document.addEventListener("DOMContentLoaded", () => {
     renderLecturesGrid();
+    updateSoundButtonUI();
 
+    // استعادة وقت الانتظار المحدد مسبقاً في القائمة
+    const timerSelect = document.getElementById('timer-duration-select');
+    if (timerSelect) timerSelect.value = userWaitTime;
+
+    // تشغيل نظام الوميض كل 10 دقائق (600,000 مللي ثانية)
+    startTenMinuteFlash();
+
+    // تصدير الدوال للـ Window
     window.startMode = startMode;
     window.goHome = goHome;
     window.goNext = goNext;
     window.goPrev = goPrev;
     window.toggleTranslation = toggleTranslation;
     window.selectOption = selectOption;
-    window.toggleEssayAnswer = toggleEssayAnswer;
+    window.toggleSound = toggleSound;
+    window.changeTimerDuration = changeTimerDuration;
+    window.skipToQuestion = skipToQuestion;
 });
 
+/* نظام وميض الاسم كل 10 دقائق لمح البصر */
+function startTenMinuteFlash() {
+    setInterval(() => {
+        const watermark = document.getElementById('flash-watermark');
+        if (watermark) {
+            watermark.classList.add('show-flash');
+            setTimeout(() => {
+                watermark.classList.remove('show-flash');
+            }, 500); // يختفي في لمح البصر بعد نصف ثانية
+        }
+    }, 10 * 60 * 10);
+}
+
+/* تبديل كتم الصوت */
+function toggleSound() {
+    const newState = !sound.enabled;
+    sound.setEnabled(newState);
+    updateSoundButtonUI();
+    if (newState) sound.playNav();
+}
+
+function updateSoundButtonUI() {
+    const btn = document.getElementById('sound-toggle-btn');
+    if (btn) {
+        btn.textContent = sound.enabled ? '🔊' : '🔇';
+    }
+}
+
+/* تغيير وقت الانتظار وحفظه */
+function changeTimerDuration(seconds) {
+    userWaitTime = parseInt(seconds) || 5;
+    localStorage.setItem('quiz_wait_time', userWaitTime);
+}
+
+/* عرض بطاقات المحاضرات بدون زر الأسئلة المقالية */
 function renderLecturesGrid() {
     const grid = document.getElementById("lectures-grid");
     grid.innerHTML = '';
@@ -43,7 +88,6 @@ function renderLecturesGrid() {
                 <button class="btn-main" onclick="startMode(${index}, 'quick')">مراجعة وحل</button>
                 <button class="btn-main btn-quiz" onclick="startMode(${index}, 'comprehensive')">اختبار شامل</button>
             </div>
-            <button class="btn-main btn-essay" onclick="startMode(${index}, 'essay')">الأسئلة المقالية</button>
         `;
         grid.appendChild(card);
     });
@@ -57,7 +101,16 @@ function clearAllAnimations() {
         countdownInterval = null;
     }
     typeWriterActive = false;
-    document.getElementById('countdown-box').style.display = 'none';
+    const cdBox = document.getElementById('countdown-box');
+    if (cdBox) cdBox.style.display = 'none';
+}
+
+/* زر التخطي لإظهار السؤال فوراً دون انتظار */
+function skipToQuestion() {
+    sound.playNav();
+    clearAllAnimations();
+    const data = currentQuestions[currentIndex];
+    revealQuestionView(data);
 }
 
 function toggleTranslation() {
@@ -76,29 +129,14 @@ function toggleTranslation() {
         const isAnswered = data.userAnswerIndex !== null;
 
         const questionCard = document.getElementById('question-card');
-        if (questionCard.style.display === 'block') {
+        if (questionCard && questionCard.style.display === 'block') {
             showQuestionOptions(data);
-            if (isAnswered) {
-                showExplanationBox(data);
-            }
+            if (isAnswered) showExplanationBox(data);
         } else {
             loadQuestionUI();
         }
     } else {
         loadQuestionUI();
-    }
-}
-
-function toggleEssayAnswer() {
-    sound.playNav();
-    const ansBox = document.getElementById('essay-ans');
-    const btn = document.getElementById('toggle-ans-btn');
-    if (ansBox.style.display === 'none') {
-        ansBox.style.display = 'block';
-        btn.innerHTML = '🙈 إخفاء الإجابة النموذجية';
-    } else {
-        ansBox.style.display = 'none';
-        btn.innerHTML = '👁️ إظهار الإجابة النموذجية';
     }
 }
 
@@ -132,28 +170,22 @@ function startMode(lectureIndex, mode) {
     wrongQuestionsQueue = [];
 
     const transBtn = document.getElementById("floating-translate-btn");
-
-    if (mode === 'comprehensive' || mode === 'essay') {
+    if (mode === 'comprehensive') {
         transBtn.style.display = 'flex';
     } else {
         transBtn.style.display = 'none';
         isTranslated = false;
     }
 
-    let baseQuestions = [];
+    let baseQuestions = lecture.questions ? JSON.parse(JSON.stringify(lecture.questions)) : [];
 
-    if (mode === 'essay') {
-        baseQuestions = lecture.essayQuestions ? JSON.parse(JSON.stringify(lecture.essayQuestions)) : [];
-        currentQuestions = baseQuestions;
-    } else if (mode === 'quick') {
-        baseQuestions = lecture.questions ? JSON.parse(JSON.stringify(lecture.questions)) : [];
+    if (mode === 'quick') {
         currentQuestions = baseQuestions.map(q => {
             q.shuffledIndices = Array.from(Array(q.opts_en.length).keys());
             q.userAnswerIndex = null;
             return q;
         });
     } else {
-        baseQuestions = lecture.questions ? JSON.parse(JSON.stringify(lecture.questions)) : [];
         shuffleArray(baseQuestions);
         currentQuestions = baseQuestions.map(q => {
             q.shuffledIndices = shuffleArray(Array.from(Array(q.opts_en.length).keys()));
@@ -171,8 +203,6 @@ function startMode(lectureIndex, mode) {
     if (noteTitle) noteTitle.textContent = isTranslated ? "📝 ملاحظة توضيحية:" : "📝 Explanation Note:";
 
     document.getElementById('note-box').style.display = 'none';
-    document.getElementById('essay-container').style.display = 'none';
-
     loadQuestionUI();
 }
 
@@ -188,19 +218,17 @@ function loadQuestionUI() {
     }
 
     const noteBox = document.getElementById('note-box');
-    const essayContainer = document.getElementById('essay-container');
     const questionCard = document.getElementById('question-card');
     const optBox = document.getElementById('opt-box');
     const quickReviewBox = document.getElementById('quick-review-box');
 
     noteBox.style.display = 'none';
-    essayContainer.style.display = 'none';
     questionCard.style.display = 'none';
     optBox.style.display = 'none';
     quickReviewBox.style.display = 'none';
 
     if (currentQuestions.length === 0) {
-        document.getElementById('q-txt').innerHTML = "لا توجد أسئلة متاحة في هذا القسم حالياً.";
+        document.getElementById('q-txt').innerHTML = "لا توجد أسئلة متاحة حالياً.";
         questionCard.style.display = 'block';
         optBox.innerHTML = "";
         return;
@@ -219,26 +247,6 @@ function loadQuestionUI() {
     optBox.innerHTML = '';
     document.getElementById('prev-btn').disabled = (currentIndex === 0);
     const nextBtn = document.getElementById('next-btn');
-
-    if (currentMode === 'essay') {
-        essayContainer.style.display = 'flex';
-        transBtn.style.display = 'flex';
-
-        document.getElementById('essay-q').innerHTML = isTranslated ? data.q_ar : data.q_en;
-        document.getElementById('essay-q').style.direction = isTranslated ? 'rtl' : 'ltr';
-        document.getElementById('essay-q').style.textAlign = isTranslated ? 'right' : 'left';
-
-        document.getElementById('essay-ans').innerHTML = isTranslated ? data.ans_ar : data.ans_en;
-        document.getElementById('essay-ans').style.direction = isTranslated ? 'rtl' : 'ltr';
-        document.getElementById('essay-ans').style.textAlign = isTranslated ? 'right' : 'left';
-
-        document.getElementById('essay-ans').style.display = 'none';
-        document.getElementById('toggle-ans-btn').innerHTML = '👁️ إظهار الإجابة النموذجية';
-
-        nextBtn.disabled = false;
-        nextBtn.textContent = (currentIndex === total - 1) ? "إنهاء" : "التالي";
-        return;
-    }
 
     const isAnswered = data.userAnswerIndex !== null;
     nextBtn.disabled = !isAnswered;
@@ -260,26 +268,19 @@ function loadQuestionUI() {
         const arText = data.info_ar || "";
 
         if (isAnswered) {
-            transBtn.style.display = 'flex';
-            quickReviewBox.style.display = 'none';
-            questionCard.style.display = 'block';
-            optBox.style.display = 'grid';
-            showQuestionOptions(data);
+            revealQuestionView(data);
         } else {
             quickReviewBox.style.display = 'flex';
-            questionCard.style.display = 'none';
-            optBox.style.display = 'none';
 
             typeWriterActive = true;
-            let i = 0,
-                j = 0;
+            let i = 0, j = 0;
 
             function typeEN() {
                 if (i < enText.length && typeWriterActive) {
                     enTextDiv.innerHTML += enText.charAt(i);
                     if (i % 2 === 0) sound.playTypewriter();
                     i++;
-                    animationTimeouts.push(setTimeout(typeEN, 25));
+                    animationTimeouts.push(setTimeout(typeEN, 20));
                 }
             }
 
@@ -287,7 +288,7 @@ function loadQuestionUI() {
                 if (j < arText.length && typeWriterActive) {
                     arTextDiv.innerHTML += arText.charAt(j);
                     j++;
-                    animationTimeouts.push(setTimeout(typeAR, 25));
+                    animationTimeouts.push(setTimeout(typeAR, 20));
                 }
             }
 
@@ -295,12 +296,12 @@ function loadQuestionUI() {
             typeAR();
 
             const maxChars = Math.max(enText.length, arText.length);
-            const typingDuration = maxChars * 25;
+            const typingDuration = maxChars * 20;
 
             animationTimeouts.push(setTimeout(() => {
                 if (!typeWriterActive) return;
 
-                let timeLeft = 10;
+                let timeLeft = userWaitTime;
                 const countdownNum = document.getElementById('countdown-num');
                 countdownNum.textContent = timeLeft;
                 countdownBox.style.display = 'flex';
@@ -314,25 +315,30 @@ function loadQuestionUI() {
                     } else {
                         clearInterval(countdownInterval);
                         countdownInterval = null;
-                        countdownBox.style.display = 'none';
-                        quickReviewBox.style.display = 'none';
-                        transBtn.style.display = 'flex';
-
-                        sound.playQuestionReveal();
-                        questionCard.style.display = 'block';
-                        optBox.style.display = 'grid';
-                        showQuestionOptions(data);
+                        revealQuestionView(data);
                     }
                 }, 1000);
 
-            }, typingDuration + 300));
+            }, typingDuration + 200));
         }
     } else {
-        quickReviewBox.style.display = 'none';
-        questionCard.style.display = 'block';
-        optBox.style.display = 'grid';
-        showQuestionOptions(data);
+        revealQuestionView(data);
     }
+}
+
+function revealQuestionView(data) {
+    const quickReviewBox = document.getElementById('quick-review-box');
+    const questionCard = document.getElementById('question-card');
+    const optBox = document.getElementById('opt-box');
+    const transBtn = document.getElementById("floating-translate-btn");
+
+    if (quickReviewBox) quickReviewBox.style.display = 'none';
+    if (transBtn) transBtn.style.display = 'flex';
+
+    sound.playQuestionReveal();
+    questionCard.style.display = 'block';
+    optBox.style.display = 'grid';
+    showQuestionOptions(data);
 }
 
 function showQuestionOptions(qData) {
@@ -388,21 +394,12 @@ function selectOption(selectedBtn, originalIdx, qData) {
         } else {
             sound.playWrong();
             selectedBtn.classList.add('wrong');
-            selectedBtn.animate([{
-                    transform: 'translateX(0)'
-                },
-                {
-                    transform: 'translateX(-5px)'
-                },
-                {
-                    transform: 'translateX(5px)'
-                },
-                {
-                    transform: 'translateX(0)'
-                }
-            ], {
-                duration: 200
-            });
+            selectedBtn.animate([
+                { transform: 'translateX(0)' },
+                { transform: 'translateX(-6px)' },
+                { transform: 'translateX(6px)' },
+                { transform: 'translateX(0)' }
+            ], { duration: 200 });
             qData.userAnswerIndex = null;
         }
     } else {
@@ -439,7 +436,6 @@ function showExplanationBox(qData) {
 
         noteBox.style.display = 'block';
         noteContent.innerHTML = isTranslated ? qData.note_ar : qData.note_en;
-
         noteBox.style.direction = isTranslated ? 'rtl' : 'ltr';
         noteBox.style.textAlign = isTranslated ? 'right' : 'left';
     } else {
@@ -475,12 +471,9 @@ function goNext() {
             sound.playCorrect();
             document.getElementById('win-overlay').style.display = 'flex';
             confetti({
-                particleCount: 400,
-                spread: 120,
-                origin: {
-                    y: 0.6
-                },
-                colors: ['#10B981', '#0284C7', '#F59E0B', '#F43F5E']
+                particleCount: 300,
+                spread: 100,
+                origin: { y: 0.6 }
             });
         }
     }
